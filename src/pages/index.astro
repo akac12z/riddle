@@ -1,0 +1,204 @@
+---
+import Layout from "../layouts/Layout.astro";
+---
+
+<Layout>
+  <section class="container">
+    <section class="intro" id="intro">
+      <h1>Bienvenida a tu regalo</h1>
+      <p class="intro-text">
+        En este viaje, 6 enigmas te esperan. Cada respuesta te acercará al
+        destino final.
+      </p>
+      <p class="question-intro">¿Estás lista?</p>
+      <button id="startButton">Comenzar</button>
+    </section>
+
+    <section class="riddle-container hidden" id="riddleContainer">
+      <span class="progress" id="progress">ENIGMA 1 DE 6</span>
+      <article class="riddle-question" id="riddleQuestion"></article>
+      <div class="input-container">
+        <input
+          type="text"
+          id="answerInput"
+          placeholder="Escribe tu respuesta..."
+        />
+        <button class="" id="sendButton">Resolver</button>
+      </div>
+      <section class="tip-section">
+        <span class="feedback" id="feedback"></span>
+        <span class="hint" id="hint"></span>
+        <span class="gift" id="gift"></span>
+      </section>
+      <button id="nextButton" class="hidden">Siguiente Enigma</button>
+      <section class="section-answer">
+        <h2 class="answer-h2 hidden" id="answer-sh2">Solución</h2>
+        <p class="answer" id="answer"></p>
+      </section>
+    </section>
+
+    <section class="final-message hidden" id="finalMessage">
+      <p>Has resuelto todos los enigmas.</p>
+      <p>El misterio ha terminado...</p>
+      <p class="final-reveal">
+        Resuelve el acertijo final uniendo todas las pistas.
+      </p>
+      <span>with 🤍 Chema</span>
+    </section>
+  </section>
+</Layout>
+<script>
+  import { riddles } from "../riddles/riddle.ts";
+
+  let currentRiddle = 0;
+  let attempts = 0;
+
+  // Expose nextRiddle to window for EasterEgg
+  (window as any).nextRiddle = nextRiddle;
+
+  function startMission() {
+    document.getElementById("intro")!.classList.add("hidden");
+    document.getElementById("riddleContainer")!.classList.remove("hidden");
+    showRiddle();
+  }
+
+  function showRiddle() {
+    const riddleQuestion = document.getElementById(
+      "riddleQuestion"
+    ) as HTMLElement;
+    const progress = document.getElementById("progress") as HTMLElement;
+    const feedback = document.getElementById("feedback") as HTMLElement;
+    const answerInput = document.getElementById(
+      "answerInput"
+    ) as HTMLInputElement;
+    const hint = document.getElementById("hint") as HTMLElement;
+    const gift = document.getElementById("gift") as HTMLElement;
+    const nextButton = document.getElementById("nextButton") as HTMLElement;
+    const sendButton = document.getElementById("sendButton") as HTMLElement;
+    const answerSolution = document.getElementById("answer") as HTMLElement;
+    const answerH2 = document.getElementById("answer-sh2") as HTMLElement;
+
+    riddleQuestion.style.opacity = "0";
+    setTimeout(() => {
+      riddleQuestion.textContent = riddles[currentRiddle].question;
+      progress.textContent = `ENIGMA ${currentRiddle + 1} DE 6`;
+      feedback.textContent = "";
+      answerInput.value = "";
+      hint.textContent = "";
+      gift.textContent = "";
+      nextButton.classList.add("hidden");
+      sendButton.classList.remove("hidden");
+      answerSolution.textContent = "";
+      answerH2.classList.add("hidden");
+      attempts = 0;
+      riddleQuestion.style.opacity = "1";
+      answerInput.focus();
+    }, 300);
+  }
+
+  function normalizeText(text: string) {
+    return text
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "");
+  }
+
+  function checkAnswer() {
+    attempts++;
+    const userAnswer = (
+      document.getElementById("answerInput") as HTMLInputElement
+    ).value;
+    const feedback = document.getElementById("feedback") as HTMLElement;
+    const hint = document.getElementById("hint") as HTMLElement;
+    const gift = document.getElementById("gift") as HTMLElement;
+    const nextButton = document.getElementById("nextButton") as HTMLElement;
+    const answerElement = document.getElementById("answer") as HTMLElement;
+    const answerH2 = document.getElementById("answer-sh2") as HTMLElement;
+    const sendButton = document.getElementById("sendButton") as HTMLElement;
+
+    const normalizedUserAnswer = normalizeText(userAnswer);
+    const currentRiddleData = riddles[currentRiddle];
+    const normalizedCorrectAnswer = normalizeText(currentRiddleData.answer);
+
+    // Verificación flexible: si la respuesta normalizada coincide exactamente, o contiene suficientes palabras clave
+    const keywords = currentRiddleData.keywords || [];
+    const hasKeywords = keywords.some((keyword) =>
+      normalizedUserAnswer.includes(normalizeText(keyword))
+    );
+    const isCorrect =
+      normalizedUserAnswer === normalizedCorrectAnswer ||
+      (hasKeywords && normalizedUserAnswer.length > 20);
+
+    if (isCorrect) {
+      feedback.textContent = "Correcto. Avanzas al siguiente enigma.";
+      feedback.className = "feedback correct";
+      hint.textContent = "";
+      gift.textContent = `Código: ${currentRiddleData.gift} (guárdalo)`;
+      nextButton.classList.remove("hidden");
+      sendButton.classList.add("hidden");
+      answerElement.textContent = "";
+    } else {
+      if (attempts >= 3) {
+        // Mostrar respuesta correcta después de 3 intentos
+        feedback.textContent = `Casi lo consigues. Bien intentado. Aquí tienes tu regalo y abajo tienes la soluicón.`;
+        feedback.className = "feedback littlebitcorrect";
+        hint.textContent = "";
+        answerH2.classList.remove("hidden");
+        gift.textContent = `Gift: ${currentRiddleData.gift} (guárdalo)`;
+        answerElement.textContent = currentRiddleData.answer;
+        sendButton.classList.add("hidden");
+        nextButton.classList.remove("hidden");
+      } else {
+        // Mostrar pista si es incorrecta
+        feedback.textContent = `No exactamente...`;
+        feedback.className = "feedback incorrect";
+        hint.textContent = `Pista: ${currentRiddleData.hint}`;
+        gift.textContent = "";
+        nextButton.classList.add("hidden");
+        answerElement.textContent = "";
+        (document.getElementById("answerInput") as HTMLInputElement).value = "";
+      }
+    }
+  }
+
+  function nextRiddle() {
+    currentRiddle++;
+    if (currentRiddle < riddles.length) {
+      showRiddle();
+    } else {
+      showFinalMessage();
+    }
+  }
+
+  function showFinalMessage() {
+    (document.getElementById("riddleContainer") as HTMLElement).classList.add(
+      "hidden"
+    );
+    (document.getElementById("finalMessage") as HTMLElement).classList.remove(
+      "hidden"
+    );
+  }
+
+  document
+    .getElementById("answerInput")!
+    .addEventListener("keypress", function (e) {
+      if (e.key === "Enter") {
+        checkAnswer();
+      }
+    });
+
+  document
+    .getElementById("startButton")!
+    .addEventListener("click", startMission);
+
+  (document.getElementById("nextButton") as HTMLElement).addEventListener(
+    "click",
+    nextRiddle
+  );
+
+  (document.getElementById("sendButton") as HTMLElement).addEventListener(
+    "click",
+    checkAnswer
+  );
+</script>
